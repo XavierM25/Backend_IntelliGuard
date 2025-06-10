@@ -1,10 +1,12 @@
 # Usa una imagen oficial de Python compatible con dlib
 FROM python:3.10-slim
 
-# Establece variables de entorno
+# Variables de entorno para Hugging Face
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    GRADIO_SERVER_NAME=0.0.0.0 \
+    GRADIO_SERVER_PORT=7860
 
 # Instala dependencias del sistema necesarias para dlib y opencv
 RUN apt-get update && apt-get install -y \
@@ -19,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    wget \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -30,16 +33,17 @@ COPY requirements.txt .
 
 # Instala las dependencias de Python
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir gradio && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copia el resto del código
 COPY . .
 
 # Crea directorios necesarios
-RUN mkdir -p data/runs
+RUN mkdir -p data/dataset_facial data/pertenencias
 
-# Expone el puerto que Render usará
-EXPOSE 10000
+# Exponer puerto de Gradio
+EXPOSE 7860
 
-# Comando para correr la app con Gunicorn optimizado para Render
-CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "1", "--threads", "2", "--timeout", "120", "app:app"] 
+# Comando para Hugging Face Spaces
+CMD ["python", "gradio_app.py"] 

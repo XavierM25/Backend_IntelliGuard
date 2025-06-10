@@ -1,0 +1,59 @@
+# Dockerfile optimizado para Hugging Face Spaces
+FROM python:3.10-slim
+
+# Variables de entorno para Hugging Face Spaces
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    GRADIO_SERVER_NAME=0.0.0.0 \
+    GRADIO_SERVER_PORT=7860
+
+# Instalar dependencias del sistema necesarias
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libopenblas-dev \
+    liblapack-dev \
+    libx11-dev \
+    libgtk-3-dev \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar archivo de dependencias
+COPY requirements_hf.txt requirements.txt
+
+# Instalar dependencias Python optimizadas para CPU
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu \
+    torch==2.0.1+cpu torchvision==0.15.2+cpu --no-deps && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copiar código fuente
+COPY . .
+
+# Crear directorios necesarios
+RUN mkdir -p data/dataset_facial data/pertenencias data/models && \
+    chmod -R 755 data/
+
+# Crear usuario no-root para seguridad
+RUN useradd -m -u 1000 user && \
+    chown -R user:user /app
+USER user
+
+# Exponer puerto de Gradio
+EXPOSE 7860
+
+# Comando para ejecutar la aplicación
+CMD ["python", "gradio_app.py"] 
